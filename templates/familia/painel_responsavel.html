@@ -1,0 +1,48 @@
+{% extends 'familia/base.html' %}{% load static %}
+{% block title %}Painel do responsável{% endblock %}
+{% block content %}
+<h1>Painel do responsável</h1>
+<p class="muted">Família {{ perfil.familia.sobrenome }} · ID {{ perfil.familia.id }}</p>
+
+<section class="guardian-panel" id="tab-tarefas">
+  <h2>Tarefas</h2>
+  <form method="post" action="{% url 'criar_tarefa' %}" class="dashboard-form">{% csrf_token %}
+    {{ tarefa_form.as_p }}<button type="submit">Criar tarefa</button>
+  </form>
+  <h3>Tarefas atuais</h3>
+  {% for t in tarefas %}<article class="card"><strong>{{ t.descricao }}</strong><p>{{ t.crianca.nome_exibicao }} · {{ t.pontos }} pontos · {{ t.get_estado_display }}</p></article>{% empty %}<p>Nenhuma tarefa cadastrada.</p>{% endfor %}
+</section>
+
+<section class="guardian-panel" id="tab-premios" hidden>
+  <h2>Prêmios</h2>
+  <form method="post" action="{% url 'criar_recompensa' %}" class="dashboard-form">{% csrf_token %}
+    {{ recompensa_form.as_p }}<button type="submit">Criar prêmio</button>
+  </form>
+  <h3>Prêmios disponíveis</h3>
+  {% for r in recompensas %}<article class="card"><strong>{{ r.nome }}</strong><p>{{ r.custo }} pontos</p></article>{% empty %}<p>Nenhum prêmio cadastrado.</p>{% endfor %}
+  <h3>Resgates recentes</h3>
+  {% for r in resgates %}<p>{{ r.crianca.nome_exibicao }} resgatou {{ r.recompensa.nome }} · {{ r.custo_pago }} pontos</p>{% empty %}<p>Nenhum resgate ainda.</p>{% endfor %}
+</section>
+
+<section class="guardian-panel" id="tab-familia" hidden>
+  <h2>Família</h2>
+  <form method="post" action="{% url 'editar_familia' %}" class="dashboard-form">{% csrf_token %}
+    {{ familia_form.as_p }}<button type="submit">Salvar perfil da família</button>
+  </form>
+  <p class="muted">ID familiar: {{ perfil.familia.id }}</p>
+  <h3>Participantes</h3>
+  <a class="button secondary" href="{% url 'nova_crianca' %}">Adicionar criança</a>
+  {% for c in criancas %}<article class="card participant-card"><div><strong>{{ c.nome_exibicao }}</strong><p class="muted">Usuário: {{ c.usuario.username }}</p></div><div class="row-actions"><a class="button secondary" href="{% url 'editar_crianca' c.id %}">Editar</a><form method="post" action="{% url 'alternar_crianca' c.id %}">{% csrf_token %}<button class="quiet-button" type="submit">Desativar</button></form></div></article>{% empty %}<p>Nenhuma criança cadastrada.</p>{% endfor %}
+  {% if criancas_inativas %}<h3>Contas desativadas</h3>{% for c in criancas_inativas %}<article class="card participant-card"><div><strong>{{ c.nome_exibicao }}</strong><p class="muted">Histórico preservado · {{ c.usuario.username }}</p></div><form method="post" action="{% url 'alternar_crianca' c.id %}">{% csrf_token %}<button type="submit">Reativar</button></form></article>{% endfor %}{% endif %}
+</section>
+
+<section class="guardian-panel" id="tab-analises" hidden>
+  <h2>Pendências</h2>
+  {% for e in envios %}<article class="card"><h3>{{ e.tarefa.descricao }} · {{ e.tarefa.crianca.nome_exibicao }}</h3><p>{{ e.tarefa.pontos }} pontos · enviado em {{ e.enviado_em|date:'d/m/Y H:i' }}</p><img class="proof" src="{{ e.foto.url }}" alt="Foto enviada como comprovação">
+  <form class="inline" method="post" action="{% url 'aprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button type="submit">Aprovar</button></form>
+  <form class="inline" method="post" action="{% url 'reprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button class="quiet-button" type="submit">Reprovar</button></form></article>{% empty %}<p>Nenhum envio pendente.</p>{% endfor %}
+  <div class="task-history"><h2>Histórico de tarefas</h2>
+    {% for t in tarefas_historico %}<article class="card"><strong>{{ t.descricao }}</strong><p>{{ t.crianca.nome_exibicao }} · {{ t.pontos }} pontos · {{ t.get_estado_display }}</p>{% for e in t.envios.all %}<p class="muted">Envio {{ e.get_estado_display|lower }} · {{ e.enviado_em|date:'d/m/Y H:i' }}</p>{% endfor %}</article>{% empty %}<p>O histórico aparecerá aqui quando houver tarefas enviadas ou concluídas.</p>{% endfor %}
+  </div>
+</section>
+{% endblock %}

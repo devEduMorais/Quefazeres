@@ -1,0 +1,48 @@
+{% extends 'familia/base.html' %}{% load static %}
+{% block title %}Painel da criança{% endblock %}
+{% block content %}<h1>Olá, {{ perfil.nome_exibicao }}</h1>
+<section class="child-welcome"><div><p class="eyebrow">Olá, {{ perfil.nome_exibicao }}!</p><div class="points"><img class="star-small" src="{% static 'star_icon.png' %}" alt=""> {{ saldo }} <small>pontos</small></div></div><img class="welcome-logo" src="{% static 'quefazeres_logo.png' %}" alt="Quefazeres"></section><section class="hero-card"><p class="eyebrow">Tarefas de hoje</p><h2>O que vamos fazer?</h2></section><section class="tab-panel" id="tab-tarefas"><h2>Minhas atividades</h2>{% for t in tarefas %}<article class="card task-card {% if t.estado == 'pendente' %}pending{% elif t.estado == 'concluida' %}done{% endif %}">
+{% if 'cama' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/arrumar-cama.png' %}" alt="Ilustração de cama arrumada">{% elif 'dente' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/escovar-dentes.png' %}" alt="Ilustração de escova de dentes">{% elif 'brinquedo' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/brinquedos.png' %}" alt="Ilustração de brinquedos">{% elif 'quarto' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/organizar-quarto.png' %}" alt="Ilustração de quarto organizado">{% endif %}<div class="task-info"><strong>{{ t.descricao }}</strong><p><img class="star-small" src="{% static 'star_icon.png' %}" alt=""> +{{ t.pontos }} pontos</p>
+{% if t.estado == 'disponivel' %}<form method="post" action="{% url 'enviar_tarefa' %}" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="tarefa_id" value="{{ t.id }}"><label>Foto de comprovação</label><input type="file" name="foto" accept="image/*" capture="environment" required><p class="muted">Escolha uma foto ou tire uma usando a câmera, se disponível.</p><button type="submit">Enviar para análise</button></form>{% endif %}
+{% with envio=t.envio_atual %}{% if envio and envio.estado == 'reprovado' %}<p>O envio anterior foi reprovado. Você pode tentar novamente.</p>{% endif %}{% endwith %}</div></article>{% empty %}<p>Nenhuma atividade designada.</p>{% endfor %}</section>
+<section class="tab-panel" id="tab-recompensas" hidden><h2>Lojinha</h2><p class="muted">Troque seus pontos por prêmios!</p>{% for r in recompensas %}<article class="card reward-card">{% if 'balinha' in r.nome|lower %}<img class="reward-art" src="{% static 'familia/arte/balinha.png' %}" alt="Balinha ilustrada">{% elif 'pirulito' in r.nome|lower %}<img class="reward-art" src="{% static 'familia/arte/pirulito.png' %}" alt="Pirulito ilustrado">{% elif 'tv' in r.nome|lower %}<img class="reward-art" src="{% static 'familia/arte/tv.png' %}" alt="Televisão ilustrada">{% elif 'videogame' in r.nome|lower %}<img class="reward-art" src="{% static 'familia/arte/videogame.png' %}" alt="Controle de videogame ilustrado">{% else %}<img class="reward-art reward-star" src="{% static 'star_icon.png' %}" alt="">{% endif %}<strong>{{ r.nome }}</strong><p><img class="star-small" src="{% static 'star_icon.png' %}" alt=""> {{ r.custo }} pontos</p>
+{% if saldo >= r.custo %}<form class="inline" method="post" action="{% url 'resgatar' %}">{% csrf_token %}<input type="hidden" name="recompensa_id" value="{{ r.id }}"><button type="submit">Resgatar</button></form>{% else %}<p class="muted">Saldo insuficiente para resgatar.</p>{% endif %}</article>{% empty %}<p>Nenhuma recompensa disponível.</p>{% endfor %}<h2>Meus resgates</h2>{% for r in resgates %}<p>{{ r.recompensa.nome }} · {{ r.custo_pago }} pontos</p>{% empty %}<p>Nenhum resgate ainda.</p>{% endfor %}</section>
+<section class="tab-panel" id="tab-perfil" hidden><h2>Meu perfil</h2><p><strong>Nome:</strong> {{ perfil.nome_exibicao }}</p><p><strong>Usuário:</strong> {{ perfil.usuario.username }}</p><p><strong>Família:</strong> {{ perfil.familia.sobrenome }}</p><p><strong>ID familiar:</strong> {{ perfil.familia.id }}</p></section>
+<script>
+(() => {
+  const validTabs = new Set(['tarefas', 'recompensas', 'perfil']);
+  const tabFromHash = () => {
+    const name = location.hash.replace(/^#tab-/, '');
+    return validTabs.has(name) ? name : 'tarefas';
+  };
+  const selectTab = name => {
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+      panel.hidden = panel.id !== `tab-${name}`;
+    });
+    document.querySelectorAll('[data-tab-link]').forEach(link => {
+      const active = link.dataset.tabLink === name;
+      link.classList.toggle('active', active);
+      if (active) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    });
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const links = document.querySelectorAll('[data-tab-link]');
+    links.forEach(link => link.addEventListener('click', event => {
+      event.preventDefault();
+      const name = link.dataset.tabLink;
+      if (!validTabs.has(name)) return;
+      if (location.hash !== link.hash) history.pushState(null, '', link.hash);
+      selectTab(name);
+    }));
+
+    if (!validTabs.has(location.hash.replace(/^#tab-/, ''))) {
+      history.replaceState(null, '', `${location.pathname}${location.search}#tab-tarefas`);
+    }
+    selectTab(tabFromHash());
+    window.addEventListener('popstate', () => selectTab(tabFromHash()));
+    window.addEventListener('hashchange', () => selectTab(tabFromHash()));
+  });
+})();
+</script>{% endblock %}

@@ -1,0 +1,5 @@
+{% extends 'familia/base.html' %}
+{% block title %}Analisar envios{% endblock %}
+{% block content %}<h1>Analisar envios</h1>{% for e in envios %}<section><h2>{{ e.tarefa.descricao }} — {{ e.tarefa.crianca.usuario.first_name|default:e.tarefa.crianca.usuario.username }}</h2><p>{{ e.tarefa.pontos }} pontos · enviado em {{ e.enviado_em }}</p><img class="proof" src="{{ e.foto.url }}" alt="Foto enviada como comprovação">
+<form class="inline" method="post" action="{% url 'aprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button type="submit">Aprovar</button></form>
+<form class="inline" method="post" action="{% url 'reprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button type="submit">Reprovar</button></form></section>{% empty %}<p>Nenhum envio pendente.</p>{% endfor %}<p><a href="{% url 'painel_responsavel' %}">Voltar ao painel</a></p>{% endblock %}

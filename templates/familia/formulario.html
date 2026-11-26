@@ -1,0 +1,6 @@
+{% extends 'familia/base.html' %}
+{% block title %}{{ titulo }} | Quefazeres{% endblock %}
+{% block content %}<section><h1>{{ titulo }}</h1>
+<form method="post" action="{% if acao %}{% url acao %}{% else %}{% endif %}">{% csrf_token %}
+{{ form.as_p }}<button type="submit">Salvar</button></form>
+<p><a href="{% url voltar %}">Voltar</a></p></section>{% endblock %}
