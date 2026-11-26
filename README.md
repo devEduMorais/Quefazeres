@@ -93,14 +93,18 @@ Abra `.env` e preencha os valores. Para desenvolvimento local:
 DJANGO_SECRET_KEY=uma-chave-privada-para-este-ambiente
 DJANGO_DEBUG=true
 SQLITE_NAME=db.sqlite3
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
 ```
 
 Mantenha `.env` privado; ele é ignorado pelo Git. `SQLITE_NAME` aceita caminho relativo à pasta do projeto ou caminho absoluto. O banco é criado/aplicado pelas migrações.
 
 ```powershell
 python manage.py migrate
+python manage.py demo        # opcional: cria dados de exemplo para apresentação
 python manage.py runserver
 ```
+
+O comando `demo` cria a família Silva com as contas `responsavel.demo`, `ana.demo` e `pedro.demo` (senha `demo12345`, apenas para uso local), além de tarefas, prêmios e um envio pendente. Ele não repete a criação se os dados já existirem. Para voltar ao estado inicial (por exemplo, antes de uma apresentação), use `python manage.py demo --reset`: apaga **somente** a família de demonstração e recria tudo, sem tocar em outras famílias.
 
 Abra `http://127.0.0.1:8000/`, crie a família e a conta do responsável. Depois cadastre uma criança, uma tarefa e um prêmio para experimentar os dois painéis.
 
@@ -136,5 +140,6 @@ Carregue a skill **Quefazeres** em `.agents/skills/quefazeres/SKILL.md` quando u
 
 ## Documentação adicional
 
+- [**Documentação completa do projeto**](docs/DOCUMENTACAO.md) — escopo, cronograma, requisitos, arquitetura, telas, BPMN, banco de dados, diagramas UML e testes
 - [Especificação do MVP](docs/spec.md)
 - [Estrutura e responsabilidades dos apps](docs/estrutura.md)

@@ -2,6 +2,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from django.contrib import messages
+from django.http import Http404
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -9,6 +10,14 @@ from django.views.decorators.http import require_POST
 from familia.views import crianca_obrigatoria, responsavel_obrigatorio
 from .forms import TarefaForm, EnvioForm
 from .models import Tarefa, Envio
+
+
+def _envio_id(request):
+    """Retorna o id do envio enviado no POST ou 404 se o valor for inválido."""
+    valor = request.POST.get('envio_id', '')
+    if not valor.isdigit():
+        raise Http404('Envio inválido.')
+    return int(valor)
 
 
 @responsavel_obrigatorio
@@ -36,13 +45,14 @@ def criar_tarefa(request):
 def enviar_tarefa(request):
     form = EnvioForm(request.POST, request.FILES)
     if not form.is_valid():
-        messages.error(request, 'Envie uma foto válida para comprovar a atividade.')
+        erros = form.errors.get('foto') or ['Envie uma foto válida para comprovar a atividade.']
+        messages.error(request, ' '.join(erros))
         return redirect('painel_crianca')
     tarefa = get_object_or_404(Tarefa, pk=form.cleaned_data['tarefa_id'], crianca=request.user.perfil, estado=Tarefa.DISPONIVEL)
     Envio.objects.create(tarefa=tarefa, foto=form.cleaned_data['foto'])
     tarefa.estado = Tarefa.PENDENTE
     tarefa.save(update_fields=['estado'])
-    messages.success(request, 'Foto enviada para análise do responsável.')
+    messages.success(request, 'Foto enviada! Agora é só esperar o responsável conferir.')
     return redirect('painel_crianca')
 
 
@@ -56,7 +66,7 @@ def analise(request):
 @require_POST
 def aprovar(request):
     with transaction.atomic():
-        envio = get_object_or_404(Envio, pk=request.POST.get('envio_id'), tarefa__familia=request.user.perfil.familia, estado=Envio.PENDENTE)
+        envio = get_object_or_404(Envio, pk=_envio_id(request), tarefa__familia=request.user.perfil.familia, estado=Envio.PENDENTE)
         envio.estado = Envio.APROVADO
         envio.analisado_em = timezone.now()
         envio.save(update_fields=['estado', 'analisado_em'])
@@ -70,7 +80,7 @@ def aprovar(request):
 @require_POST
 def reprovar(request):
     with transaction.atomic():
-        envio = get_object_or_404(Envio, pk=request.POST.get('envio_id'), tarefa__familia=request.user.perfil.familia, estado=Envio.PENDENTE)
+        envio = get_object_or_404(Envio, pk=_envio_id(request), tarefa__familia=request.user.perfil.familia, estado=Envio.PENDENTE)
         envio.estado = Envio.REPROVADO
         envio.analisado_em = timezone.now()
         envio.save(update_fields=['estado', 'analisado_em'])

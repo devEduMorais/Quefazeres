@@ -7,3 +7,6 @@ __pycache__/
 venv/
 staticfiles/
 .pytest_cache/
+
+# Fotos geradas por "python manage.py demo"
+media/comprovantes/**/demo-*

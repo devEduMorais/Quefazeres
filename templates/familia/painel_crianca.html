@@ -1,13 +1,64 @@
 {% extends 'familia/base.html' %}{% load static %}
-{% block title %}Painel da criança{% endblock %}
-{% block content %}<h1>Olá, {{ perfil.nome_exibicao }}</h1>
-<section class="child-welcome"><div><p class="eyebrow">Olá, {{ perfil.nome_exibicao }}!</p><div class="points"><img class="star-small" src="{% static 'star_icon.png' %}" alt=""> {{ saldo }} <small>pontos</small></div></div><img class="welcome-logo" src="{% static 'quefazeres_logo.png' %}" alt="Quefazeres"></section><section class="hero-card"><p class="eyebrow">Tarefas de hoje</p><h2>O que vamos fazer?</h2></section><section class="tab-panel" id="tab-tarefas"><h2>Minhas atividades</h2>{% for t in tarefas %}<article class="card task-card {% if t.estado == 'pendente' %}pending{% elif t.estado == 'concluida' %}done{% endif %}">
-{% if 'cama' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/arrumar-cama.png' %}" alt="Ilustração de cama arrumada">{% elif 'dente' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/escovar-dentes.png' %}" alt="Ilustração de escova de dentes">{% elif 'brinquedo' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/brinquedos.png' %}" alt="Ilustração de brinquedos">{% elif 'quarto' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/organizar-quarto.png' %}" alt="Ilustração de quarto organizado">{% endif %}<div class="task-info"><strong>{{ t.descricao }}</strong><p><img class="star-small" src="{% static 'star_icon.png' %}" alt=""> +{{ t.pontos }} pontos</p>
-{% if t.estado == 'disponivel' %}<form method="post" action="{% url 'enviar_tarefa' %}" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="tarefa_id" value="{{ t.id }}"><label>Foto de comprovação</label><input type="file" name="foto" accept="image/*" capture="environment" required><p class="muted">Escolha uma foto ou tire uma usando a câmera, se disponível.</p><button type="submit">Enviar para análise</button></form>{% endif %}
-{% with envio=t.envio_atual %}{% if envio and envio.estado == 'reprovado' %}<p>O envio anterior foi reprovado. Você pode tentar novamente.</p>{% endif %}{% endwith %}</div></article>{% empty %}<p>Nenhuma atividade designada.</p>{% endfor %}</section>
-<section class="tab-panel" id="tab-recompensas" hidden><h2>Lojinha</h2><p class="muted">Troque seus pontos por prêmios!</p>{% for r in recompensas %}<article class="card reward-card">{% if 'balinha' in r.nome|lower %}<img class="reward-art" src="{% static 'familia/arte/balinha.png' %}" alt="Balinha ilustrada">{% elif 'pirulito' in r.nome|lower %}<img class="reward-art" src="{% static 'familia/arte/pirulito.png' %}" alt="Pirulito ilustrado">{% elif 'tv' in r.nome|lower %}<img class="reward-art" src="{% static 'familia/arte/tv.png' %}" alt="Televisão ilustrada">{% elif 'videogame' in r.nome|lower %}<img class="reward-art" src="{% static 'familia/arte/videogame.png' %}" alt="Controle de videogame ilustrado">{% else %}<img class="reward-art reward-star" src="{% static 'star_icon.png' %}" alt="">{% endif %}<strong>{{ r.nome }}</strong><p><img class="star-small" src="{% static 'star_icon.png' %}" alt=""> {{ r.custo }} pontos</p>
-{% if saldo >= r.custo %}<form class="inline" method="post" action="{% url 'resgatar' %}">{% csrf_token %}<input type="hidden" name="recompensa_id" value="{{ r.id }}"><button type="submit">Resgatar</button></form>{% else %}<p class="muted">Saldo insuficiente para resgatar.</p>{% endif %}</article>{% empty %}<p>Nenhuma recompensa disponível.</p>{% endfor %}<h2>Meus resgates</h2>{% for r in resgates %}<p>{{ r.recompensa.nome }} · {{ r.custo_pago }} pontos</p>{% empty %}<p>Nenhum resgate ainda.</p>{% endfor %}</section>
-<section class="tab-panel" id="tab-perfil" hidden><h2>Meu perfil</h2><p><strong>Nome:</strong> {{ perfil.nome_exibicao }}</p><p><strong>Usuário:</strong> {{ perfil.usuario.username }}</p><p><strong>Família:</strong> {{ perfil.familia.sobrenome }}</p><p><strong>ID familiar:</strong> {{ perfil.familia.id }}</p></section>
+{% block title %}Meu painel | Quefazeres{% endblock %}
+{% block content %}
+<section class="kid-hero" aria-label="Meus pontos">
+  <h1>Olá, {{ perfil.nome_exibicao }}!</h1>
+  <div class="points-badge"><img src="{% static 'familia/icons/star.svg' %}" alt=""><strong>{{ saldo }}</strong><span>pontos</span></div>
+  {% if tarefas_total %}<div class="day-progress">
+    <p>{% if tarefas_feitas == tarefas_total %}Você fez todas as tarefas. Parabéns!{% else %}{{ tarefas_feitas }} de {{ tarefas_total }} tarefas feitas{% endif %}</p>
+    <div class="progress" role="progressbar" aria-label="Tarefas feitas" aria-valuemin="0" aria-valuemax="{{ tarefas_total }}" aria-valuenow="{{ tarefas_feitas }}"><span style="width: {{ progresso_tarefas }}%"></span></div>
+  </div>{% endif %}
+</section>
+
+<section class="tab-panel" id="tab-tarefas">
+  <div class="panel-head"><img src="{% static 'familia/icons/tasks.svg' %}" alt=""><h2>Minhas tarefas</h2></div>
+  <p class="panel-intro">Faça a tarefa, tire uma foto e envie para o responsável conferir.</p>
+  <div class="task-list">
+  {% for t in tarefas %}<article class="task-card {% if t.estado == 'pendente' %}pending{% elif t.estado == 'concluida' %}done{% endif %}">
+    {% if 'cama' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/arrumar-cama.png' %}" alt="">{% elif 'dente' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/escovar-dentes.png' %}" alt="">{% elif 'brinquedo' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/brinquedos.png' %}" alt="">{% elif 'quarto' in t.descricao|lower %}<img class="activity-art" src="{% static 'familia/arte/organizar-quarto.png' %}" alt="">{% else %}<img class="activity-art" src="{% static 'familia/icons/star.svg' %}" alt="">{% endif %}
+    <div class="task-info">
+      <div class="task-head"><strong>{{ t.descricao }}</strong><span class="status points-chip"><img src="{% static 'familia/icons/star.svg' %}" alt="">+{{ t.pontos }}</span></div>
+      {% if t.estado == 'pendente' %}<span class="status pending">Esperando o responsável conferir</span>
+      {% elif t.estado == 'concluida' %}<span class="status done">Feita! Pontos ganhos</span>
+      {% else %}{% with envio=t.envio_atual %}{% if envio and envio.estado == 'reprovado' %}<p class="status retry">Quase lá! Faça de novo e envie outra foto.</p>{% endif %}{% endwith %}{% endif %}
+    </div>
+    {% if t.estado == 'disponivel' %}<form class="task-actions" method="post" action="{% url 'enviar_tarefa' %}" enctype="multipart/form-data">{% csrf_token %}
+      <input type="hidden" name="tarefa_id" value="{{ t.id }}">
+      <label class="photo-picker">
+        <input class="sr-only" type="file" name="foto" accept="image/jpeg,image/png,image/gif,image/webp" capture="environment" required>
+        <span class="photo-label"><img src="{% static 'familia/icons/camera.svg' %}" alt=""><span class="photo-text" data-vazio="Escolher foto">Escolher foto</span></span>
+      </label>
+      <button class="btn-green" type="submit">Enviar foto</button>
+    </form>{% endif %}
+  </article>{% empty %}<div class="empty-state"><img src="{% static 'familia/icons/tasks.svg' %}" alt=""><p>Nenhuma tarefa por enquanto. Peça ao responsável para criar uma!</p></div>{% endfor %}
+  </div>
+</section>
+
+<section class="tab-panel" id="tab-recompensas" hidden>
+  <div class="panel-head"><img src="{% static 'familia/icons/gift.svg' %}" alt=""><h2>Lojinha</h2></div>
+  <p class="panel-intro">Troque seus pontos por prêmios. Você tem <strong>{{ saldo }} pontos</strong>.</p>
+  <div class="reward-grid">
+  {% for r in recompensas %}<article class="reward-card{% if saldo >= r.custo %} can-buy{% endif %}">
+    {% if 'balinha' in r.nome|lower or 'bala' in r.nome|lower %}<span class="reward-frame has-label"><img src="{% static 'familia/arte/balinha.png' %}" alt=""></span>{% elif 'pirulito' in r.nome|lower %}<span class="reward-frame has-label"><img src="{% static 'familia/arte/pirulito.png' %}" alt=""></span>{% elif 'tv' in r.nome|lower %}<span class="reward-frame"><img src="{% static 'familia/arte/tv.png' %}" alt=""></span>{% elif 'videogame' in r.nome|lower or 'game' in r.nome|lower %}<span class="reward-frame"><img src="{% static 'familia/arte/videogame.png' %}" alt=""></span>{% else %}<span class="reward-frame is-icon"><img src="{% static 'familia/icons/gift.svg' %}" alt=""></span>{% endif %}
+    <strong>{{ r.nome }}</strong>
+    <span class="status points-chip"><img src="{% static 'familia/icons/star.svg' %}" alt="">{{ r.custo }} pontos</span>
+    {% if saldo >= r.custo %}<form method="post" action="{% url 'resgatar' %}" data-confirm="Trocar {{ r.custo }} pontos por {{ r.nome }}?">{% csrf_token %}<input type="hidden" name="recompensa_id" value="{{ r.id }}"><button class="btn-green" type="submit">Quero este!</button></form>
+    {% else %}<div class="progress" role="progressbar" aria-label="Pontos para {{ r.nome }}" aria-valuemin="0" aria-valuemax="{{ r.custo }}" aria-valuenow="{{ saldo }}"><span style="width: {{ r.progresso }}%"></span></div><p class="muted">Faltam {{ r.falta }} pontos</p>{% endif %}
+  </article>{% empty %}<div class="empty-state"><img src="{% static 'familia/icons/gift.svg' %}" alt=""><p>A lojinha ainda está vazia. Logo chegam prêmios!</p></div>{% endfor %}
+  </div>
+  <h3>Prêmios que já ganhei</h3>
+  <div class="history">
+  {% for r in resgates %}<div class="history-row"><strong>{{ r.recompensa.nome }}</strong><span class="muted">{{ r.custo_pago }} pontos em {{ r.criado_em|date:'d/m' }}</span></div>{% empty %}<p class="muted">Você ainda não trocou pontos por prêmios.</p>{% endfor %}
+  </div>
+</section>
+
+<section class="tab-panel" id="tab-perfil" hidden>
+  <div class="panel-head"><img src="{% static 'familia/icons/profile.svg' %}" alt=""><h2>Meu perfil</h2></div>
+  <div class="sticker">
+    <div class="profile-card"><img src="{% static 'familia/icons/profile.svg' %}" alt=""><div><strong class="profile-name">{{ perfil.nome_exibicao }}</strong><p class="muted">Família {{ perfil.familia.sobrenome }}</p></div></div>
+    <dl class="profile-list"><dt>Usuário</dt><dd>{{ perfil.usuario.username }}</dd><dt>Pontos</dt><dd>{{ saldo }}</dd><dt>Tarefas feitas</dt><dd>{{ tarefas_feitas }}</dd></dl>
+  </div>
+</section>
 <script>
 (() => {
   const validTabs = new Set(['tarefas', 'recompensas', 'perfil']);

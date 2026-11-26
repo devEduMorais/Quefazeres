@@ -1,6 +1,7 @@
 {% extends 'familia/base.html' %}
 {% block title %}{{ titulo }} | Quefazeres{% endblock %}
-{% block content %}<section><h1>{{ titulo }}</h1>
-<form method="post" action="{% if acao %}{% url acao %}{% else %}{% endif %}">{% csrf_token %}
-{{ form.as_p }}<button type="submit">Salvar</button></form>
-<p><a href="{% url voltar %}">Voltar</a></p></section>{% endblock %}
+{% block content %}<p><a class="back-link" href="{% url voltar %}">&larr; Voltar</a></p>
+<section class="sticker"><h1>{{ titulo }}</h1>
+{% if form.non_field_errors %}<p class="message error" role="alert">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+<form method="post" action="{% if acao %}{% url acao %}{% endif %}">{% csrf_token %}
+{{ form.as_p }}<button class="button-block" type="submit">Salvar</button></form></section>{% endblock %}

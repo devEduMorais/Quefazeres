@@ -3,19 +3,65 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#DDF1FF">
   <title>{% block title %}Quefazeres{% endblock %}</title>
-  {% load static %}<link rel="stylesheet" href="{% static 'familia/app.css' %}">
+  {% load static %}<link rel="icon" href="{% static 'star_icon.png' %}">
+  <link rel="preload" href="{% static 'familia/fonts/fredoka.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'familia/app.css' %}">
 </head>
-<body>
-<div class="app-shell"><header class="topbar"><a class="brand" href="{% url 'inicio' %}"><img class="brand-logo" src="{% static 'quefazeres_logo.png' %}" alt="Quefazeres"></a>
-{% if user.is_authenticated %}<form class="inline" method="post" action="{% url 'sair' %}">{% csrf_token %}<button class="quiet-button" type="submit">Sair</button></form>{% endif %}</header>
+<body class="{% if user.is_authenticated and user.perfil.papel == 'responsavel' %}is-guardian{% elif user.is_authenticated %}is-kid{% endif %}">
+<div class="app-shell">
+<header class="topbar">
+  <a class="brand" href="{% url 'inicio' %}"><img class="brand-logo" src="{% static 'quefazeres_logo.png' %}" alt="Quefazeres — página inicial"></a>
+  {% if user.is_authenticated %}<div class="topbar-user"><span class="user-chip">{% if user.perfil.papel == 'crianca' %}Criança{% else %}Responsável{% endif %}</span><form class="inline" method="post" action="{% url 'sair' %}">{% csrf_token %}<button class="quiet-button" type="submit">Sair</button></form></div>{% endif %}
+</header>
 <main>
-{% if messages %}<ul class="messages">{% for message in messages %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
+{% if messages %}<ul class="messages" role="status">{% for message in messages %}<li class="message {{ message.tags }}">{{ message }}</li>{% endfor %}</ul>{% endif %}
 {% block content %}{% endblock %}
 </main>
 {% if user.is_authenticated %}<nav class="bottom-nav" aria-label="Navegação principal">
-{% if user.perfil.papel == 'crianca' %}<a href="{% url 'painel_crianca' %}#tab-recompensas" data-tab-link="recompensas"><img src="{% static 'star_icon.png' %}" alt="">Lojinha</a><a href="{% url 'painel_crianca' %}#tab-tarefas" data-tab-link="tarefas"><img src="{% static 'familia/icons/tasks.svg' %}" alt="">Tarefas</a><a href="{% url 'painel_crianca' %}#tab-perfil" data-tab-link="perfil"><img src="{% static 'familia/icons/profile.svg' %}" alt="">Perfil</a>
-{% else %}{% if request.resolver_match.url_name == 'painel_responsavel' %}<a href="#tab-tarefas" data-guardian-tab="tarefas"><img src="{% static 'familia/icons/tasks.svg' %}" alt="">Tarefas</a><a href="#tab-premios" data-guardian-tab="premios"><img src="{% static 'star_icon.png' %}" alt="">Prêmios</a><a href="#tab-familia" data-guardian-tab="familia"><img src="{% static 'familia/icons/profile.svg' %}" alt="">Família</a><a href="#tab-analises" data-guardian-tab="analises"><img src="{% static 'familia/icons/review.svg' %}" alt="">Análises</a>{% else %}<a href="{% url 'painel_responsavel' %}#tab-tarefas"><img src="{% static 'familia/icons/tasks.svg' %}" alt="">Tarefas</a><a href="{% url 'painel_responsavel' %}#tab-premios"><img src="{% static 'star_icon.png' %}" alt="">Prêmios</a><a href="{% url 'painel_responsavel' %}#tab-familia"><img src="{% static 'familia/icons/profile.svg' %}" alt="">Família</a><a href="{% url 'painel_responsavel' %}#tab-analises"><img src="{% static 'familia/icons/review.svg' %}" alt="">Análises</a>{% endif %}{% endif %}</nav>{% endif %}</div>
+{% if user.perfil.papel == 'crianca' %}
+  <a href="{% url 'painel_crianca' %}#tab-tarefas" data-tab-link="tarefas"><img src="{% static 'familia/icons/tasks.svg' %}" alt="">Tarefas</a>
+  <a href="{% url 'painel_crianca' %}#tab-recompensas" data-tab-link="recompensas"><img src="{% static 'familia/icons/gift.svg' %}" alt="">Lojinha</a>
+  <a href="{% url 'painel_crianca' %}#tab-perfil" data-tab-link="perfil"><img src="{% static 'familia/icons/profile.svg' %}" alt="">Perfil</a>
+{% elif request.resolver_match.url_name == 'painel_responsavel' %}
+  <a href="#tab-tarefas" data-guardian-tab="tarefas"><img src="{% static 'familia/icons/tasks.svg' %}" alt="">Tarefas</a>
+  <a href="#tab-premios" data-guardian-tab="premios"><img src="{% static 'familia/icons/gift.svg' %}" alt="">Prêmios</a>
+  <a href="#tab-familia" data-guardian-tab="familia"><img src="{% static 'familia/icons/family.svg' %}" alt="">Família</a>
+  <a href="#tab-analises" data-guardian-tab="analises"><img src="{% static 'familia/icons/review.svg' %}" alt="">Análises{% if envios %}<span class="nav-badge" aria-label="{{ envios|length }} pendentes">{{ envios|length }}</span>{% endif %}</a>
+{% else %}
+  <a href="{% url 'painel_responsavel' %}#tab-tarefas"><img src="{% static 'familia/icons/tasks.svg' %}" alt="">Tarefas</a>
+  <a href="{% url 'painel_responsavel' %}#tab-premios"><img src="{% static 'familia/icons/gift.svg' %}" alt="">Prêmios</a>
+  <a href="{% url 'painel_responsavel' %}#tab-familia"><img src="{% static 'familia/icons/family.svg' %}" alt="">Família</a>
+  <a href="{% url 'painel_responsavel' %}#tab-analises"><img src="{% static 'familia/icons/review.svg' %}" alt="">Análises</a>
+{% endif %}</nav>{% endif %}
+</div>
 {% if user.is_authenticated and user.perfil.papel == 'responsavel' %}<script src="{% static 'familia/guardian-tabs.js' %}" defer></script>{% endif %}
+<script>
+document.addEventListener('submit', event => {
+  const msg = event.target.dataset.confirm;
+  if (msg && !window.confirm(msg)) { event.preventDefault(); return; }
+  // Evita envio duplicado (duplo clique) enquanto a página recarrega.
+  if (event.target.dataset.enviando) { event.preventDefault(); return; }
+  event.target.dataset.enviando = '1';
+  event.target.querySelectorAll('button[type=submit]').forEach(b => { b.disabled = true; });
+});
+window.addEventListener('pageshow', () => document.querySelectorAll('form[data-enviando]').forEach(f => {
+  delete f.dataset.enviando;
+  f.querySelectorAll('button[type=submit]').forEach(b => { b.disabled = false; });
+}));
+document.querySelectorAll('[data-phone-mask]').forEach(input => input.addEventListener('input', () => {
+  const d = input.value.replace(/\D/g, '').slice(0, 11);
+  input.value = d.length > 7 ? `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}` : d.length > 2 ? `(${d.slice(0,2)}) ${d.slice(2)}` : d;
+}));
+// Mostra o nome da foto escolhida no botão "Escolher foto".
+document.querySelectorAll('.photo-picker input[type=file]').forEach(input => input.addEventListener('change', () => {
+  const picker = input.closest('.photo-picker');
+  const text = picker.querySelector('.photo-text');
+  const file = input.files[0];
+  picker.classList.toggle('has-file', Boolean(file));
+  text.textContent = file ? `Foto escolhida: ${file.name}` : text.dataset.vazio;
+}));
+</script>
 </body>
 </html>

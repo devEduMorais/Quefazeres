@@ -1,48 +1,75 @@
 {% extends 'familia/base.html' %}{% load static %}
-{% block title %}Painel do responsável{% endblock %}
+{% block title %}Painel do responsável | Quefazeres{% endblock %}
 {% block content %}
-<h1>Painel do responsável</h1>
-<p class="muted">Família {{ perfil.familia.sobrenome }} · ID {{ perfil.familia.id }}</p>
+<section class="guardian-hero">
+  <p class="family-name">Família {{ perfil.familia.sobrenome }}</p>
+  <h1>Olá, {{ perfil.nome_exibicao }}!</h1>
+  <div class="stats">
+    <a class="stat" href="#tab-familia"><strong>{{ criancas|length }}</strong><span>crianças</span></a>
+    <a class="stat" href="#tab-tarefas"><strong>{{ tarefas_abertas }}</strong><span>tarefas abertas</span></a>
+    <a class="stat{% if envios %} stat-alert{% endif %}" href="#tab-analises"><strong>{{ envios|length }}</strong><span>fotos para conferir</span></a>
+    <a class="stat" href="#tab-premios"><strong>{{ recompensas|length }}</strong><span>prêmios</span></a>
+  </div>
+</section>
+
+{% if not criancas %}<section class="sticker onboarding"><h2>Primeiros passos</h2><ol><li>Cadastre uma criança na aba <a href="#tab-familia">Família</a>.</li><li>Crie uma tarefa com pontos na aba <a href="#tab-tarefas">Tarefas</a>.</li><li>Cadastre prêmios na aba <a href="#tab-premios">Prêmios</a>.</li></ol><a class="button" href="{% url 'nova_crianca' %}">Cadastrar a primeira criança</a></section>{% endif %}
 
 <section class="guardian-panel" id="tab-tarefas">
-  <h2>Tarefas</h2>
-  <form method="post" action="{% url 'criar_tarefa' %}" class="dashboard-form">{% csrf_token %}
-    {{ tarefa_form.as_p }}<button type="submit">Criar tarefa</button>
-  </form>
+  <div class="panel-head"><img src="{% static 'familia/icons/tasks.svg' %}" alt=""><h2>Tarefas</h2></div>
+  <p class="panel-intro">Crie tarefas e defina quantos pontos cada uma vale.</p>
+  {% if criancas %}<form method="post" action="{% url 'criar_tarefa' %}" class="dashboard-form">{% csrf_token %}
+    <h3>Nova tarefa</h3>
+    {{ tarefa_form.as_p }}<button class="button-block" type="submit">Criar tarefa</button>
+  </form>{% else %}<p class="message info">Cadastre uma criança antes de criar tarefas.</p>{% endif %}
   <h3>Tarefas atuais</h3>
-  {% for t in tarefas %}<article class="card"><strong>{{ t.descricao }}</strong><p>{{ t.crianca.nome_exibicao }} · {{ t.pontos }} pontos · {{ t.get_estado_display }}</p></article>{% empty %}<p>Nenhuma tarefa cadastrada.</p>{% endfor %}
+  <div class="list">
+  {% for t in tarefas %}<article class="list-card"><div><strong>{{ t.descricao }}</strong><p class="muted">{{ t.crianca.nome_exibicao }}, {{ t.pontos }} pontos</p></div><span class="status {% if t.estado == 'pendente' %}pending{% elif t.estado == 'concluida' %}done{% endif %}">{{ t.get_estado_display }}</span></article>{% empty %}<div class="empty-state"><img src="{% static 'familia/icons/tasks.svg' %}" alt=""><p>Nenhuma tarefa criada ainda.</p></div>{% endfor %}
+  </div>
 </section>
 
 <section class="guardian-panel" id="tab-premios" hidden>
-  <h2>Prêmios</h2>
+  <div class="panel-head"><img src="{% static 'familia/icons/gift.svg' %}" alt=""><h2>Prêmios</h2></div>
+  <p class="panel-intro">Os prêmios aparecem na Lojinha das crianças.</p>
   <form method="post" action="{% url 'criar_recompensa' %}" class="dashboard-form">{% csrf_token %}
-    {{ recompensa_form.as_p }}<button type="submit">Criar prêmio</button>
+    <h3>Novo prêmio</h3>
+    {{ recompensa_form.as_p }}<button class="button-block" type="submit">Criar prêmio</button>
   </form>
   <h3>Prêmios disponíveis</h3>
-  {% for r in recompensas %}<article class="card"><strong>{{ r.nome }}</strong><p>{{ r.custo }} pontos</p></article>{% empty %}<p>Nenhum prêmio cadastrado.</p>{% endfor %}
-  <h3>Resgates recentes</h3>
-  {% for r in resgates %}<p>{{ r.crianca.nome_exibicao }} resgatou {{ r.recompensa.nome }} · {{ r.custo_pago }} pontos</p>{% empty %}<p>Nenhum resgate ainda.</p>{% endfor %}
+  <div class="list">
+  {% for r in recompensas %}<article class="list-card"><strong>{{ r.nome }}</strong><span class="status points-chip"><img src="{% static 'familia/icons/star.svg' %}" alt="">{{ r.custo }} pontos</span></article>{% empty %}<div class="empty-state"><img src="{% static 'familia/icons/gift.svg' %}" alt=""><p>Nenhum prêmio cadastrado.</p></div>{% endfor %}
+  </div>
+  <h3>Trocas recentes</h3>
+  <div class="history">
+  {% for r in resgates %}<div class="history-row"><strong>{{ r.crianca.nome_exibicao }} trocou por {{ r.recompensa.nome }}</strong><span class="muted">{{ r.custo_pago }} pontos em {{ r.criado_em|date:'d/m/Y H:i' }}</span></div>{% empty %}<p class="muted">Nenhuma troca ainda.</p>{% endfor %}
+  </div>
 </section>
 
 <section class="guardian-panel" id="tab-familia" hidden>
-  <h2>Família</h2>
-  <form method="post" action="{% url 'editar_familia' %}" class="dashboard-form">{% csrf_token %}
-    {{ familia_form.as_p }}<button type="submit">Salvar perfil da família</button>
+  <div class="panel-head"><img src="{% static 'familia/icons/family.svg' %}" alt=""><h2>Família</h2></div>
+  <p class="panel-intro">Contas das crianças e pontos de cada uma.</p>
+  <a class="button secondary button-block" href="{% url 'nova_crianca' %}">Adicionar criança</a>
+  <h3>Crianças</h3>
+  <div class="list">
+  {% for c in criancas %}<article class="participant-card"><div><strong>{{ c.nome_exibicao }}</strong><p class="muted">Usuário: {{ c.usuario.username }}</p><p class="balance"><img class="star-small" src="{% static 'familia/icons/star.svg' %}" alt=""> {{ c.saldo }} pontos</p></div><div class="row-actions"><a class="button secondary" href="{% url 'editar_crianca' c.id %}">Editar</a><form method="post" action="{% url 'alternar_crianca' c.id %}" data-confirm="Desativar a conta de {{ c.nome_exibicao }}? O histórico será mantido.">{% csrf_token %}<button class="quiet-button" type="submit">Desativar</button></form></div></article>{% empty %}<div class="empty-state"><img src="{% static 'familia/icons/family.svg' %}" alt=""><p>Nenhuma criança cadastrada.</p></div>{% endfor %}
+  </div>
+  {% if criancas_inativas %}<h3>Contas desativadas</h3><div class="list">{% for c in criancas_inativas %}<article class="participant-card inactive"><div><strong>{{ c.nome_exibicao }}</strong><p class="muted">Histórico preservado. Usuário: {{ c.usuario.username }}</p></div><form method="post" action="{% url 'alternar_crianca' c.id %}">{% csrf_token %}<button type="submit">Reativar</button></form></article>{% endfor %}</div>{% endif %}
+  <form method="post" action="{% url 'editar_familia' %}" class="dashboard-form" style="margin-top: 24px">{% csrf_token %}
+    <h3>Dados da família</h3>
+    {{ familia_form.as_p }}<button type="submit">Salvar</button>
+    <p class="muted family-id">ID familiar: {{ perfil.familia.id }}</p>
   </form>
-  <p class="muted">ID familiar: {{ perfil.familia.id }}</p>
-  <h3>Participantes</h3>
-  <a class="button secondary" href="{% url 'nova_crianca' %}">Adicionar criança</a>
-  {% for c in criancas %}<article class="card participant-card"><div><strong>{{ c.nome_exibicao }}</strong><p class="muted">Usuário: {{ c.usuario.username }}</p></div><div class="row-actions"><a class="button secondary" href="{% url 'editar_crianca' c.id %}">Editar</a><form method="post" action="{% url 'alternar_crianca' c.id %}">{% csrf_token %}<button class="quiet-button" type="submit">Desativar</button></form></div></article>{% empty %}<p>Nenhuma criança cadastrada.</p>{% endfor %}
-  {% if criancas_inativas %}<h3>Contas desativadas</h3>{% for c in criancas_inativas %}<article class="card participant-card"><div><strong>{{ c.nome_exibicao }}</strong><p class="muted">Histórico preservado · {{ c.usuario.username }}</p></div><form method="post" action="{% url 'alternar_crianca' c.id %}">{% csrf_token %}<button type="submit">Reativar</button></form></article>{% endfor %}{% endif %}
 </section>
 
 <section class="guardian-panel" id="tab-analises" hidden>
-  <h2>Pendências</h2>
-  {% for e in envios %}<article class="card"><h3>{{ e.tarefa.descricao }} · {{ e.tarefa.crianca.nome_exibicao }}</h3><p>{{ e.tarefa.pontos }} pontos · enviado em {{ e.enviado_em|date:'d/m/Y H:i' }}</p><img class="proof" src="{{ e.foto.url }}" alt="Foto enviada como comprovação">
-  <form class="inline" method="post" action="{% url 'aprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button type="submit">Aprovar</button></form>
-  <form class="inline" method="post" action="{% url 'reprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button class="quiet-button" type="submit">Reprovar</button></form></article>{% empty %}<p>Nenhum envio pendente.</p>{% endfor %}
+  <div class="panel-head"><img src="{% static 'familia/icons/review.svg' %}" alt=""><h2>Pendências</h2></div>
+  <p class="panel-intro">Confira a foto e aprove para creditar os pontos.</p>
+  {% for e in envios %}<article class="review-card"><div class="list-card"><div><strong>{{ e.tarefa.descricao }}</strong><p class="muted">{{ e.tarefa.crianca.nome_exibicao }} enviou em {{ e.enviado_em|date:'d/m/Y H:i' }}</p></div><span class="status points-chip"><img src="{% static 'familia/icons/star.svg' %}" alt="">{{ e.tarefa.pontos }}</span></div><a href="{{ e.foto.url }}" target="_blank" rel="noopener" aria-label="Abrir a foto em tamanho maior"><img class="proof" src="{{ e.foto.url }}" alt="Foto enviada como comprovação"></a>
+  <div class="review-actions"><form method="post" action="{% url 'aprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button class="approve" type="submit">Aprovar</button></form>
+  <form method="post" action="{% url 'reprovar_tarefa' %}" data-confirm="Reprovar este envio? A tarefa volta para a criança tentar de novo.">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button class="reject" type="submit">Reprovar</button></form></div></article>{% empty %}<div class="empty-state"><img src="{% static 'familia/icons/review.svg' %}" alt=""><p>Tudo em dia! Nenhuma foto esperando.</p></div>{% endfor %}
   <div class="task-history"><h2>Histórico de tarefas</h2>
-    {% for t in tarefas_historico %}<article class="card"><strong>{{ t.descricao }}</strong><p>{{ t.crianca.nome_exibicao }} · {{ t.pontos }} pontos · {{ t.get_estado_display }}</p>{% for e in t.envios.all %}<p class="muted">Envio {{ e.get_estado_display|lower }} · {{ e.enviado_em|date:'d/m/Y H:i' }}</p>{% endfor %}</article>{% empty %}<p>O histórico aparecerá aqui quando houver tarefas enviadas ou concluídas.</p>{% endfor %}
+    <div class="list">
+    {% for t in tarefas_historico %}<article><div class="list-card"><div><strong>{{ t.descricao }}</strong><p class="muted">{{ t.crianca.nome_exibicao }}, {{ t.pontos }} pontos</p></div><span class="status {% if t.estado == 'pendente' %}pending{% elif t.estado == 'concluida' %}done{% endif %}">{{ t.get_estado_display }}</span></div>{% for e in t.envios.all %}<p class="muted">Envio {{ e.get_estado_display|lower }} em {{ e.enviado_em|date:'d/m/Y H:i' }}</p>{% endfor %}</article>{% empty %}<p class="muted">O histórico aparece aqui quando houver tarefas enviadas ou concluídas.</p>{% endfor %}
+    </div>
   </div>
 </section>
 {% endblock %}
