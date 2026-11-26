@@ -1,9 +1,24 @@
-{% extends 'familia/base.html' %}
+{% extends 'familia/base.html' %}{% load static %}
 {% block title %}Entrar | Quefazeres{% endblock %}
-{% block content %}<section><h1>Entrar</h1>
-{% if erro %}<p>{{ erro }}</p>{% endif %}
-<form method="post">{% csrf_token %}
-<label for="username">Usuário</label><input id="username" name="nome_usuario" autocomplete="username" required>
-<label for="password">Senha</label><input id="password" type="password" name="senha" autocomplete="current-password" required>
-<p><button type="submit">Entrar</button></p></form>
-<p>Primeira vez? <a href="{% url 'cadastro' %}">Criar conta do responsável</a></p></section>{% endblock %}
+{% block content %}
+<section class="sticker login-hero">
+  <div class="login-hero-stars" aria-hidden="true"><img src="{% static 'familia/icons/star.svg' %}" alt=""><img src="{% static 'familia/icons/star.svg' %}" alt=""><img src="{% static 'familia/icons/star.svg' %}" alt=""></div>
+  <h1>Que bom ver você!</h1>
+  <p>Tarefas de casa viram pontos, e pontos viram prêmios.</p>
+</section>
+<section class="sticker">
+  <h2>Entrar</h2>
+  {% if erro %}<p class="message error" role="alert">{{ erro }}</p>{% endif %}
+  <form method="post">{% csrf_token %}
+    <label for="username">Usuário</label><input id="username" name="nome_usuario" autocomplete="username" autocapitalize="none" autofocus required>
+    <label for="password">Senha</label><input id="password" type="password" name="senha" autocomplete="current-password" required>
+    <button class="button-block" type="submit">Entrar</button>
+  </form>
+  <p class="muted login-help">Crianças entram com o usuário e a senha que o responsável criou.</p>
+</section>
+<section class="sticker signup-card">
+  <h2>Primeira vez aqui?</h2>
+  <p class="muted">Crie sua família e a conta de responsável em menos de um minuto.</p>
+  <a class="button secondary button-block" href="{% url 'cadastro' %}">Criar conta do responsável</a>
+</section>
+{% endblock %}

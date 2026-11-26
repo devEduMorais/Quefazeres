@@ -1,5 +1,8 @@
-{% extends 'familia/base.html' %}
-{% block title %}Analisar envios{% endblock %}
-{% block content %}<h1>Analisar envios</h1>{% for e in envios %}<section><h2>{{ e.tarefa.descricao }} — {{ e.tarefa.crianca.usuario.first_name|default:e.tarefa.crianca.usuario.username }}</h2><p>{{ e.tarefa.pontos }} pontos · enviado em {{ e.enviado_em }}</p><img class="proof" src="{{ e.foto.url }}" alt="Foto enviada como comprovação">
-<form class="inline" method="post" action="{% url 'aprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button type="submit">Aprovar</button></form>
-<form class="inline" method="post" action="{% url 'reprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button type="submit">Reprovar</button></form></section>{% empty %}<p>Nenhum envio pendente.</p>{% endfor %}<p><a href="{% url 'painel_responsavel' %}">Voltar ao painel</a></p>{% endblock %}
+{% extends 'familia/base.html' %}{% load static %}
+{% block title %}Conferir fotos | Quefazeres{% endblock %}
+{% block content %}<p><a class="back-link" href="{% url 'painel_responsavel' %}#tab-analises">&larr; Voltar ao painel</a></p>
+<div class="panel-head"><img src="{% static 'familia/icons/review.svg' %}" alt=""><h1>Conferir fotos</h1></div>
+{% for e in envios %}<article class="review-card"><div class="list-card"><div><strong>{{ e.tarefa.descricao }}</strong><p class="muted">{{ e.tarefa.crianca.nome_exibicao }} enviou em {{ e.enviado_em|date:'d/m/Y H:i' }}</p></div><span class="status points-chip"><img src="{% static 'familia/icons/star.svg' %}" alt="">{{ e.tarefa.pontos }}</span></div><img class="proof" src="{{ e.foto.url }}" alt="Foto enviada como comprovação">
+<div class="review-actions"><form method="post" action="{% url 'aprovar_tarefa' %}">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button class="approve" type="submit">Aprovar</button></form>
+<form method="post" action="{% url 'reprovar_tarefa' %}" data-confirm="Reprovar este envio? A tarefa volta para a criança tentar de novo.">{% csrf_token %}<input type="hidden" name="envio_id" value="{{ e.id }}"><button class="reject" type="submit">Reprovar</button></form></div></article>{% empty %}<div class="empty-state"><img src="{% static 'familia/icons/review.svg' %}" alt=""><p>Tudo em dia! Nenhuma foto esperando.</p></div>{% endfor %}
+{% endblock %}

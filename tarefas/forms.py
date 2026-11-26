@@ -34,8 +34,25 @@ class EnvioForm(forms.Form):
 
     def clean_foto(self):
         foto = self.cleaned_data['foto']
-        if not foto.content_type.startswith('image/'):
-            raise forms.ValidationError('Envie um arquivo de imagem.')
-        if foto.size > 5 * 1024 * 1024:
-            raise forms.ValidationError('A imagem deve ter no máximo 5 MB.')
+        if foto.size > TAMANHO_MAXIMO_FOTO:
+            raise forms.ValidationError('A foto é muito grande. Envie uma imagem de até 10 MB.')
+        extensao = foto.name.rsplit('.', 1)[-1].lower() if '.' in foto.name else ''
+        inicio = foto.read(12)
+        foto.seek(0)
+        if extensao not in EXTENSOES_PERMITIDAS or not _assinatura_de_imagem(inicio):
+            raise forms.ValidationError('Formato não aceito. Envie uma foto JPG, PNG, GIF ou WEBP.')
         return foto
+
+
+TAMANHO_MAXIMO_FOTO = 10 * 1024 * 1024
+EXTENSOES_PERMITIDAS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+
+
+def _assinatura_de_imagem(inicio):
+    """Confere os primeiros bytes do arquivo para garantir que é mesmo uma imagem."""
+    return (
+        inicio.startswith(b'\xff\xd8\xff')                       # JPEG
+        or inicio.startswith(b'\x89PNG\r\n\x1a\n')               # PNG
+        or inicio[:6] in (b'GIF87a', b'GIF89a')                  # GIF
+        or (inicio[:4] == b'RIFF' and inicio[8:12] == b'WEBP')   # WEBP
+    )

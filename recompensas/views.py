@@ -36,14 +36,14 @@ def resgatar(request):
     perfil = request.user.perfil
     try:
         recompensa = Recompensa.objects.get(pk=request.POST.get('recompensa_id'), familia=perfil.familia, ativa=True)
-    except Recompensa.DoesNotExist:
+    except (Recompensa.DoesNotExist, ValueError, TypeError):
         messages.error(request, 'Essa recompensa não está disponível.')
         return redirect('painel_crianca')
     with transaction.atomic():
         saldo = saldo_da_crianca(perfil)
         if saldo < recompensa.custo:
-            messages.error(request, 'Você ainda não tem pontos suficientes.')
+            messages.error(request, 'Ainda faltam pontos para esse prêmio. Continue fazendo tarefas!')
         else:
             Resgate.objects.create(familia=perfil.familia, crianca=perfil, recompensa=recompensa, custo_pago=recompensa.custo)
-            messages.success(request, f'Recompensa resgatada: {recompensa.nome}.')
+            messages.success(request, f'Oba! Você trocou seus pontos por: {recompensa.nome}.')
     return redirect('painel_crianca')

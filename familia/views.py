@@ -17,6 +17,11 @@ def inicio(request):
         return redirect('entrar')
     perfil = getattr(request.user, 'perfil', None)
     if perfil is None:
+        # Conta sem perfil (ex.: superusuário do /admin/). Evita o ciclo inicio <-> entrar.
+        if request.user.is_staff:
+            return redirect('admin:index')
+        logout(request)
+        messages.error(request, 'Esta conta não está ligada a uma família. Entre com outra conta.')
         return redirect('entrar')
     return redirect('painel_responsavel' if perfil.papel == Perfil.RESPONSAVEL else 'painel_crianca')
 
@@ -83,19 +88,22 @@ def painel_responsavel(request):
     perfil = request.user.perfil
     from tarefas.models import Tarefa, Envio
     from recompensas.models import Recompensa, Resgate
-    criancas = Perfil.objects.filter(familia=perfil.familia, papel=Perfil.CRIANCA, ativo=True).select_related('usuario')
+    criancas = list(Perfil.objects.filter(familia=perfil.familia, papel=Perfil.CRIANCA, ativo=True).select_related('usuario'))
     criancas_inativas = Perfil.objects.filter(familia=perfil.familia, papel=Perfil.CRIANCA, ativo=False).select_related('usuario')
     tarefas = Tarefa.objects.filter(familia=perfil.familia).select_related('crianca__usuario')
     envios = Envio.objects.filter(tarefa__familia=perfil.familia, estado=Envio.PENDENTE).select_related('tarefa', 'tarefa__crianca__usuario')
     recompensas = Recompensa.objects.filter(familia=perfil.familia, ativa=True)
     resgates = Resgate.objects.filter(familia=perfil.familia).select_related('crianca__usuario', 'recompensa')[:10]
     tarefas_historico = tarefas.exclude(estado=Tarefa.DISPONIVEL)
+    from recompensas.services import saldo_da_crianca
+    for crianca in criancas:
+        crianca.saldo = saldo_da_crianca(crianca)
     from tarefas.forms import TarefaForm
     from recompensas.forms import RecompensaForm
     familia_form = EditarFamiliaForm(instance=perfil.familia)
     tarefa_form = TarefaForm(familia=perfil.familia)
     recompensa_form = RecompensaForm()
-    return render(request, 'familia/painel_responsavel.html', {'perfil': perfil, 'criancas': criancas, 'criancas_inativas': criancas_inativas, 'tarefas': tarefas, 'tarefas_historico': tarefas_historico, 'envios': envios, 'recompensas': recompensas, 'resgates': resgates, 'familia_form': familia_form, 'tarefa_form': tarefa_form, 'recompensa_form': recompensa_form})
+    return render(request, 'familia/painel_responsavel.html', {'perfil': perfil, 'criancas': criancas, 'criancas_inativas': criancas_inativas, 'tarefas': tarefas, 'tarefas_abertas': tarefas.exclude(estado=Tarefa.CONCLUIDA).count(), 'tarefas_historico': tarefas_historico, 'envios': envios, 'recompensas': recompensas, 'resgates': resgates, 'familia_form': familia_form, 'tarefa_form': tarefa_form, 'recompensa_form': recompensa_form})
 
 
 @crianca_obrigatoria
@@ -105,9 +113,17 @@ def painel_crianca(request):
     from recompensas.models import Recompensa, Resgate
     from recompensas.services import saldo_da_crianca
     tarefas = Tarefa.objects.filter(crianca=perfil)
-    recompensas = Recompensa.objects.filter(familia=perfil.familia, ativa=True)
+    saldo = saldo_da_crianca(perfil)
+    recompensas = list(Recompensa.objects.filter(familia=perfil.familia, ativa=True).order_by('custo'))
+    for recompensa in recompensas:
+        recompensa.falta = max(recompensa.custo - saldo, 0)
+        recompensa.progresso = min(100, max(0, saldo) * 100 // recompensa.custo) if recompensa.custo else 100
     resgates = Resgate.objects.filter(crianca=perfil).select_related('recompensa')[:10]
-    return render(request, 'familia/painel_crianca.html', {'perfil': perfil, 'tarefas': tarefas, 'recompensas': recompensas, 'resgates': resgates, 'saldo': saldo_da_crianca(perfil)})
+    # Apenas para exibição: barra "X de Y tarefas feitas".
+    tarefas_total = tarefas.count()
+    tarefas_feitas = tarefas.filter(estado=Tarefa.CONCLUIDA).count()
+    progresso_tarefas = tarefas_feitas * 100 // tarefas_total if tarefas_total else 0
+    return render(request, 'familia/painel_crianca.html', {'perfil': perfil, 'tarefas': tarefas, 'recompensas': recompensas, 'resgates': resgates, 'saldo': saldo, 'tarefas_total': tarefas_total, 'tarefas_feitas': tarefas_feitas, 'progresso_tarefas': progresso_tarefas})
 
 
 @responsavel_obrigatorio
